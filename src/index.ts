@@ -1,65 +1,56 @@
-const argv = require('minimist')(process.argv.slice(2));
-const net = require('net');
-//const tls = require('tls');
-const url = require('url');
+import minimist = require("minimist");
+const argv = minimist(process.argv.slice(2));
+import { Socket } from 'net';
+import { URL } from 'url';
+import { readFileSync } from "fs";
+import { connect } from "tls";
 
-const parsedArgs: { host: string[], data: string, method: string } = parseArgs();
-const method: number = verifyArgs(parsedArgs);
+// Main code
 
-if(method === 0) {
+type RequestMethod = 'GET' | 'POST';
+
+const options = {
+    key: readFileSync('private-key.pem'),
+    cert: readFileSync('public-cert.pem')
+};
+
+const request: { host: string, method: RequestMethod, data: string } | null = parseArgs();
+
+if(!request) {
     console.log("Invalid input.");
+} else {
+    const hostUrl = new URL(request.host);
+    const client = openSocket(hostUrl.hostname);
+    sendRequest(request.method, request.data, hostUrl.pathname, client);
 }
 
-const hostUrl = new url.URL(parsedArgs.host[0]);
+// Methods
 
-const client = openSocket(hostUrl.hostname);
-sendRequest(method, parsedArgs.data, hostUrl.pathname);
-
-
-function sendRequest(method: number, data: string, path: string) {
-    switch(method) {
-        case 1:
-            client.write(`GET ${path} HTTP/1.0
+function sendRequest(method: RequestMethod, data: string, path: string, client: Socket) {
+    if(method === "GET") {
+        client.write(`GET ${path} HTTP/1.0
 
 `);
-        case 2:
-            client.write(`POST ${path} HTTP/1.0
+    } else if(method === "POST") {
+        client.write(`POST ${path} HTTP/1.0
 ${data}
 
 `);
-        default: return;
     }
     return;
 }
 
-function verifyArgs(args: { host: string[], data: string, method: string }) {
-    if(args.host.length !== 1) {
-        // Invalid input
-        return 0;
-    }
-    if(args.method === "POST") {
-        // POST Request
-        return 2;
-    } else if(args.method === "") {
-        // GET Request
-        return 1;
-    }
-
-    return 0;
-}
-
 function openSocket(host: string) {
-    const client = new net.Socket();
-
-    client.connect(
+    const client = connect(
         443,
         host,
+        options,
         function() {
             console.log("Connected");
         }
     );
 
-    client.on('data', (data: any) => {
+    client.on('data', (data: Buffer) => {
         console.log(data.toString());
         client.end();
     });
@@ -68,23 +59,26 @@ function openSocket(host: string) {
 }
 
 function parseArgs() {
-    let method = "";
-    let data = "";
-    let host: string[] = [];
+    const request: { host: string, method: RequestMethod, data: string } = { host: "", method: "GET", data: "" };
 
-    if(argv["x"]) {
-        method = argv["x"];
-    }
-
-    if(argv["d"]) {
-        data = argv["d"];
-    }
+    // Unsure if matches RequestMethod type yet, so keep as temp before checking
+    const tempMethod = argv["x"] || "";
+    request.data = argv["d"] || "";
 
     // Only accept single (non flagged) input
     if(argv["_"]?.length === 1) {
-        host = argv["_"];
+        request.host = argv["_"][0];
+    } else {
+        return null;
     }
 
-    return { host, data, method };
+    if(tempMethod === "POST") {
+        request.method = tempMethod;
+    } else if (tempMethod != "") {
+        // Return null if not GET or POST
+        return null;
+    }
+
+    return request;
 }
 
