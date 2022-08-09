@@ -41,8 +41,6 @@ ${data}
 }
 
 function openSocket(host: string) {
-    //const client = new TLSSocket(new Socket());
-
     const client = connect(
         443,
         host,
