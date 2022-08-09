@@ -1,6 +1,7 @@
-let argv = require('minimist')(process.argv.slice(2));
-let net = require('net');
-let url = require('url');
+const argv = require('minimist')(process.argv.slice(2));
+const net = require('net');
+//const tls = require('tls');
+const url = require('url');
 
 const parsedArgs: { host: string[], data: string, method: string } = parseArgs();
 const method: number = verifyArgs(parsedArgs);
@@ -51,7 +52,7 @@ function openSocket(host: string) {
     const client = new net.Socket();
 
     client.connect(
-        80,
+        443,
         host,
         function() {
             console.log("Connected");
@@ -67,8 +68,8 @@ function openSocket(host: string) {
 }
 
 function parseArgs() {
-    let method: string = "";
-    let data: string = "";
+    let method = "";
+    let data = "";
     let host: string[] = [];
 
     if(argv["x"]) {
