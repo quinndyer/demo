@@ -1,10 +1,18 @@
-const argv = require('minimist')(process.argv.slice(2));
+import minimist = require("minimist");
+const argv = minimist(process.argv.slice(2));
 import { Socket } from 'net';
 import { URL } from 'url';
+import { readFileSync } from "fs";
+import { connect } from "tls";
+
+// Main code
 
 type RequestMethod = 'GET' | 'POST';
 
-// Main code
+const options = {
+    key: readFileSync('private-key.pem'),
+    cert: readFileSync('public-cert.pem')
+};
 
 const request: { host: string, method: RequestMethod, data: string } | null = parseArgs();
 
@@ -33,17 +41,18 @@ ${data}
 }
 
 function openSocket(host: string) {
-    const client = new Socket();
+    //const client = new TLSSocket(new Socket());
 
-    client.connect(
-        80,
+    const client = connect(
+        443,
         host,
+        options,
         function() {
             console.log("Connected");
         }
     );
 
-    client.on('data', (data: any) => {
+    client.on('data', (data: Buffer) => {
         console.log(data.toString());
         client.end();
     });
